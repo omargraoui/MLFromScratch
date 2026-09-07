@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13"]
+    env:
+      MPLBACKEND: Agg
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package and development tools
+        run: python -m pip install -e ".[dev]"
+      - name: Lint and formatting
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+      - name: Type check core package
+        run: python -m mypy
+      - name: Tests with branch coverage
+        run: python -m pytest --cov=ml_from_scratch --cov-report=term-missing --cov-report=xml
+      - name: Verify documentation and execute notebooks
+        run: python scripts/verify_artifacts.py --notebooks
+      - name: Reproduce benchmarks and figures
+        if: matrix.python-version == '3.13'
+        run: |
+          python -m benchmarks.run_all --output-dir /tmp/ml-benchmark-results
+          python scripts/generate_figures.py
+      - name: Build distribution
+        run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-python-${{ matrix.python-version }}
+          path: coverage.xml
