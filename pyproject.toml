@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ml-from-scratch"
+version = "0.1.0"
+description = "NumPy machine learning algorithms with mathematical derivations and reproducible reference validation."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "Omar Graoui"}]
+keywords = ["machine-learning", "numpy", "algorithms", "education"]
+dependencies = ["numpy>=1.26"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.9", "mypy>=1.14",
+    "scikit-learn>=1.5,<2", "matplotlib>=3.9", "nbformat>=5.10",
+    "nbclient>=0.10", "ipykernel>=6.29", "build>=1.2", "PyYAML>=6.0",
+]
+notebooks = ["jupyterlab>=4.2"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ml_from_scratch = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["ml_from_scratch"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["benchmarks/results"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+files = ["src/ml_from_scratch"]
+disallow_untyped_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+ignore_missing_imports = true
