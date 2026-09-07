@@ -1,0 +1,650 @@
+{
+  "metadata": {
+    "generated_at_utc": "2026-09-07T19:07:04.198265+00:00",
+    "seed": 42,
+    "python": "3.13.5",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",
+    "versions": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "scikit-learn": "1.9.0",
+      "threadpoolctl": "3.6.0"
+    },
+    "blas_threads": 1,
+    "timing": "One perf_counter fit measurement per estimator, excluding preprocessing.",
+    "dataset_count": 6,
+    "datasets": [
+      "synthetic_regression",
+      "diabetes",
+      "breast_cancer",
+      "iris",
+      "wine",
+      "digits"
+    ],
+    "comparison_metrics": "scikit-learn metrics independently applied to both implementations",
+    "split": "Supervised: 75% train / 25% test, seed=42, classification stratified."
+  },
+  "runs": [
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "synthetic_regression",
+      "n_train": 450,
+      "n_test": 150,
+      "n_features": 8,
+      "preprocessing": "Feature z-scores fitted on training data; target unscaled.",
+      "ours": {
+        "solver": "gd",
+        "learning_rate": 0.3811964675886767,
+        "max_iter": 100000,
+        "tol": 1e-07,
+        "n_iter": 20,
+        "converged": true,
+        "final_loss": 98.39162774392452,
+        "fit_seconds": 0.0013120000367052853
+      },
+      "reference": {
+        "estimator": "sklearn.linear_model.LinearRegression",
+        "fit_intercept": true,
+        "fit_seconds": 0.0009560000034980476
+      },
+      "assumptions": "Both minimize unregularized MSE with an unpenalized intercept."
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "synthetic_regression",
+      "n_train": 450,
+      "n_test": 150,
+      "n_features": 8,
+      "preprocessing": "Feature z-scores fitted on training data; target unscaled.",
+      "ours": {
+        "solver": "normal",
+        "learning_rate": 0.3811964675886767,
+        "max_iter": 100000,
+        "tol": 1e-07,
+        "n_iter": 0,
+        "converged": true,
+        "final_loss": 98.39162774392452,
+        "fit_seconds": 0.0002777999616228044
+      },
+      "reference": {
+        "estimator": "sklearn.linear_model.LinearRegression",
+        "fit_intercept": true,
+        "fit_seconds": 0.0009560000034980476
+      },
+      "assumptions": "Both minimize unregularized MSE with an unpenalized intercept."
+    },
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "diabetes",
+      "n_train": 331,
+      "n_test": 111,
+      "n_features": 10,
+      "preprocessing": "Feature z-scores fitted on training data; target unscaled.",
+      "ours": {
+        "solver": "gd",
+        "learning_rate": 0.11483062359047363,
+        "max_iter": 100000,
+        "tol": 1e-07,
+        "n_iter": 7506,
+        "converged": true,
+        "final_loss": 2907.257764010109,
+        "fit_seconds": 0.44596340000862256
+      },
+      "reference": {
+        "estimator": "sklearn.linear_model.LinearRegression",
+        "fit_intercept": true,
+        "fit_seconds": 0.0007779999868944287
+      },
+      "assumptions": "Both minimize unregularized MSE with an unpenalized intercept."
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "diabetes",
+      "n_train": 331,
+      "n_test": 111,
+      "n_features": 10,
+      "preprocessing": "Feature z-scores fitted on training data; target unscaled.",
+      "ours": {
+        "solver": "normal",
+        "learning_rate": 0.11483062359047363,
+        "max_iter": 100000,
+        "tol": 1e-07,
+        "n_iter": 0,
+        "converged": true,
+        "final_loss": 2907.2577640101085,
+        "fit_seconds": 0.0002145000034943223
+      },
+      "reference": {
+        "estimator": "sklearn.linear_model.LinearRegression",
+        "fit_intercept": true,
+        "fit_seconds": 0.0007779999868944287
+      },
+      "assumptions": "Both minimize unregularized MSE with an unpenalized intercept."
+    },
+    {
+      "algorithm": "LogisticRegression",
+      "dataset": "breast_cancer",
+      "n_train": 426,
+      "n_test": 143,
+      "n_features": 30,
+      "preprocessing": "Feature z-scores fitted on training data; stratified split.",
+      "ours": {
+        "learning_rate": 0.2725493639574378,
+        "max_iter": 50000,
+        "tol": 1e-08,
+        "l2": 0.01,
+        "threshold": 0.5,
+        "n_iter": 4338,
+        "converged": true,
+        "final_loss": 0.09691126146364056,
+        "fit_seconds": 0.4169026999734342
+      },
+      "reference": {
+        "estimator": "sklearn.linear_model.LogisticRegression",
+        "solver": "lbfgs",
+        "C": 0.2347417840375587,
+        "max_iter": 50000,
+        "tol": 1e-10,
+        "n_iter": 30,
+        "fit_seconds": 0.0067829000181518495
+      },
+      "assumptions": "Both minimize mean BCE + l2/2 * squared weight norm; intercept is unpenalized. sklearn C=1/(n_train*l2). Different optimizers have different stopping criteria. Positive label 1 is benign; F1 follows the dataset encoding."
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "iris",
+      "n_samples": 150,
+      "n_features": 4,
+      "preprocessing": "Whole-data z-scores for exploratory clustering.",
+      "settings": {
+        "n_clusters": 3,
+        "init": "k-means++",
+        "n_init": 10,
+        "max_iter": 300,
+        "tol": 1e-06,
+        "random_state": 42
+      },
+      "ours": {
+        "n_iter": 5,
+        "fit_seconds": 0.009308800043072551
+      },
+      "reference": {
+        "estimator": "sklearn.cluster.KMeans",
+        "algorithm": "lloyd",
+        "n_iter": 4,
+        "fit_seconds": 0.028907999978400767
+      },
+      "assumptions": "Same seed and restart count, but NumPy Generator and sklearn RNG differ. Our vanilla and sklearn greedy k-means++ may choose different starts. Our absolute centroid displacement tolerance differs from sklearn's scaled tolerance. Local minima and iteration counts may therefore differ."
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "wine",
+      "n_samples": 178,
+      "n_features": 13,
+      "preprocessing": "Whole-data z-scores for exploratory clustering.",
+      "settings": {
+        "n_clusters": 3,
+        "init": "k-means++",
+        "n_init": 10,
+        "max_iter": 300,
+        "tol": 1e-06,
+        "random_state": 42
+      },
+      "ours": {
+        "n_iter": 2,
+        "fit_seconds": 0.00926740001887083
+      },
+      "reference": {
+        "estimator": "sklearn.cluster.KMeans",
+        "algorithm": "lloyd",
+        "n_iter": 7,
+        "fit_seconds": 0.008242699957918376
+      },
+      "assumptions": "Same seed and restart count, but NumPy Generator and sklearn RNG differ. Our vanilla and sklearn greedy k-means++ may choose different starts. Our absolute centroid displacement tolerance differs from sklearn's scaled tolerance. Local minima and iteration counts may therefore differ."
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "iris",
+      "n_samples": 150,
+      "n_features": 4,
+      "n_components": 2,
+      "preprocessing": "Whole-data z-scores; centering occurs inside both estimators.",
+      "ours": {
+        "solver": "numpy.linalg.svd",
+        "fit_seconds": 0.00017389998538419604
+      },
+      "reference": {
+        "estimator": "sklearn.decomposition.PCA",
+        "svd_solver": "full",
+        "fit_seconds": 0.0004873999860137701
+      },
+      "assumptions": "Both use sample variance (n-1 denominator), no whitening. Reconstruction and projectors ignore component sign ambiguity. These are in-sample dimensionality reduction diagnostics."
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "wine",
+      "n_samples": 178,
+      "n_features": 13,
+      "n_components": 5,
+      "preprocessing": "Whole-data z-scores; centering occurs inside both estimators.",
+      "ours": {
+        "solver": "numpy.linalg.svd",
+        "fit_seconds": 0.00021129997912794352
+      },
+      "reference": {
+        "estimator": "sklearn.decomposition.PCA",
+        "svd_solver": "full",
+        "fit_seconds": 0.0004705999745056033
+      },
+      "assumptions": "Both use sample variance (n-1 denominator), no whitening. Reconstruction and projectors ignore component sign ambiguity. These are in-sample dimensionality reduction diagnostics."
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "digits",
+      "n_samples": 1797,
+      "n_features": 64,
+      "n_components": 20,
+      "preprocessing": "Pixel intensities /16; centering occurs inside both estimators.",
+      "ours": {
+        "solver": "numpy.linalg.svd",
+        "fit_seconds": 0.005995299958158284
+      },
+      "reference": {
+        "estimator": "sklearn.decomposition.PCA",
+        "svd_solver": "full",
+        "fit_seconds": 0.006802899995818734
+      },
+      "assumptions": "Both use sample variance (n-1 denominator), no whitening. Reconstruction and projectors ignore component sign ambiguity. These are in-sample dimensionality reduction diagnostics."
+    }
+  ],
+  "results": [
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "synthetic_regression",
+      "metric": "test_mse",
+      "from_scratch": 93.2420324915078,
+      "scikit_learn": 93.24203247053512,
+      "absolute_difference": 2.0972677816644136e-08,
+      "relative_difference": 2.249272914902578e-10
+    },
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "synthetic_regression",
+      "metric": "test_r2",
+      "from_scratch": 0.9934936786436974,
+      "scikit_learn": 0.9934936786451609,
+      "absolute_difference": 1.4634959910608814e-12,
+      "relative_difference": 1.4730803250370634e-12
+    },
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "synthetic_regression",
+      "metric": "prediction_rmse_vs_reference",
+      "from_scratch": 5.032359230246209e-08,
+      "scikit_learn": 0.0,
+      "absolute_difference": 5.032359230246209e-08,
+      "relative_difference": null
+    },
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "synthetic_regression",
+      "metric": "fit_seconds",
+      "from_scratch": 0.0013120000367052853,
+      "scikit_learn": 0.0009560000034980476,
+      "absolute_difference": 0.0003560000332072377,
+      "relative_difference": 0.3723849706115244
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "synthetic_regression",
+      "metric": "test_mse",
+      "from_scratch": 93.24203247053516,
+      "scikit_learn": 93.24203247053512,
+      "absolute_difference": 4.263256414560601e-14,
+      "relative_difference": 4.572247409887604e-16
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "synthetic_regression",
+      "metric": "test_r2",
+      "from_scratch": 0.9934936786451609,
+      "scikit_learn": 0.9934936786451609,
+      "absolute_difference": 0.0,
+      "relative_difference": 0.0
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "synthetic_regression",
+      "metric": "prediction_rmse_vs_reference",
+      "from_scratch": 7.842248296788264e-14,
+      "scikit_learn": 0.0,
+      "absolute_difference": 7.842248296788264e-14,
+      "relative_difference": null
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "synthetic_regression",
+      "metric": "fit_seconds",
+      "from_scratch": 0.0002777999616228044,
+      "scikit_learn": 0.0009560000034980476,
+      "absolute_difference": 0.0006782000418752432,
+      "relative_difference": 0.7094142671481991
+    },
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "diabetes",
+      "metric": "test_mse",
+      "from_scratch": 2848.310648877952,
+      "scikit_learn": 2848.310650847506,
+      "absolute_difference": 1.9695539776876103e-06,
+      "relative_difference": 6.914814495748824e-10
+    },
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "diabetes",
+      "metric": "test_r2",
+      "from_scratch": 0.48490588930385337,
+      "scikit_learn": 0.4849058889476754,
+      "absolute_difference": 3.56177976001959e-10,
+      "relative_difference": 7.345301101104858e-10
+    },
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "diabetes",
+      "metric": "prediction_rmse_vs_reference",
+      "from_scratch": 4.09991649228747e-07,
+      "scikit_learn": 0.0,
+      "absolute_difference": 4.09991649228747e-07,
+      "relative_difference": null
+    },
+    {
+      "algorithm": "LinearRegression(gd)",
+      "dataset": "diabetes",
+      "metric": "fit_seconds",
+      "from_scratch": 0.44596340000862256,
+      "scikit_learn": 0.0007779999868944287,
+      "absolute_difference": 0.44518540002172813,
+      "relative_difference": 572.2177474562578
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "diabetes",
+      "metric": "test_mse",
+      "from_scratch": 2848.3106508475057,
+      "scikit_learn": 2848.310650847506,
+      "absolute_difference": 4.547473508864641e-13,
+      "relative_difference": 1.5965511021459524e-16
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "diabetes",
+      "metric": "test_r2",
+      "from_scratch": 0.4849058889476755,
+      "scikit_learn": 0.4849058889476754,
+      "absolute_difference": 1.1102230246251565e-16,
+      "relative_difference": 2.289563913184311e-16
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "diabetes",
+      "metric": "prediction_rmse_vs_reference",
+      "from_scratch": 5.232713536175213e-14,
+      "scikit_learn": 0.0,
+      "absolute_difference": 5.232713536175213e-14,
+      "relative_difference": null
+    },
+    {
+      "algorithm": "LinearRegression(normal)",
+      "dataset": "diabetes",
+      "metric": "fit_seconds",
+      "from_scratch": 0.0002145000034943223,
+      "scikit_learn": 0.0007779999868944287,
+      "absolute_difference": 0.0005634999834001064,
+      "relative_difference": 0.7242930499902065
+    },
+    {
+      "algorithm": "LogisticRegression",
+      "dataset": "breast_cancer",
+      "metric": "test_accuracy",
+      "from_scratch": 0.986013986013986,
+      "scikit_learn": 0.986013986013986,
+      "absolute_difference": 0.0,
+      "relative_difference": 0.0
+    },
+    {
+      "algorithm": "LogisticRegression",
+      "dataset": "breast_cancer",
+      "metric": "test_f1",
+      "from_scratch": 0.9888888888888889,
+      "scikit_learn": 0.9888888888888889,
+      "absolute_difference": 0.0,
+      "relative_difference": 0.0
+    },
+    {
+      "algorithm": "LogisticRegression",
+      "dataset": "breast_cancer",
+      "metric": "test_log_loss",
+      "from_scratch": 0.08542479767146416,
+      "scikit_learn": 0.08542479830047996,
+      "absolute_difference": 6.290157977817401e-10,
+      "relative_difference": 7.363386397111411e-09
+    },
+    {
+      "algorithm": "LogisticRegression",
+      "dataset": "breast_cancer",
+      "metric": "probability_max_abs_difference",
+      "from_scratch": 1.5592500779426643e-07,
+      "scikit_learn": 0.0,
+      "absolute_difference": 1.5592500779426643e-07,
+      "relative_difference": null
+    },
+    {
+      "algorithm": "LogisticRegression",
+      "dataset": "breast_cancer",
+      "metric": "fit_seconds",
+      "from_scratch": 0.4169026999734342,
+      "scikit_learn": 0.0067829000181518495,
+      "absolute_difference": 0.41011979995528236,
+      "relative_difference": 60.463783758827766
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "iris",
+      "metric": "inertia",
+      "from_scratch": 139.82049635974982,
+      "scikit_learn": 139.82049635974974,
+      "absolute_difference": 8.526512829121202e-14,
+      "relative_difference": 6.098185209686995e-16
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "iris",
+      "metric": "ari_vs_known_labels",
+      "from_scratch": 0.6201351808870379,
+      "scikit_learn": 0.6201351808870379,
+      "absolute_difference": 0.0,
+      "relative_difference": 0.0
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "iris",
+      "metric": "ari_vs_reference",
+      "from_scratch": 1.0,
+      "scikit_learn": 1.0,
+      "absolute_difference": 0.0,
+      "relative_difference": 0.0
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "iris",
+      "metric": "iterations",
+      "from_scratch": 5.0,
+      "scikit_learn": 4.0,
+      "absolute_difference": 1.0,
+      "relative_difference": 0.25
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "iris",
+      "metric": "fit_seconds",
+      "from_scratch": 0.009308800043072551,
+      "scikit_learn": 0.028907999978400767,
+      "absolute_difference": 0.019599199935328215,
+      "relative_difference": 0.677985331049266
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "wine",
+      "metric": "inertia",
+      "from_scratch": 1277.928488844642,
+      "scikit_learn": 1277.928488844643,
+      "absolute_difference": 9.094947017729282e-13,
+      "relative_difference": 7.1169451946031e-16
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "wine",
+      "metric": "ari_vs_known_labels",
+      "from_scratch": 0.8974949815093207,
+      "scikit_learn": 0.8974949815093207,
+      "absolute_difference": 0.0,
+      "relative_difference": 0.0
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "wine",
+      "metric": "ari_vs_reference",
+      "from_scratch": 1.0,
+      "scikit_learn": 1.0,
+      "absolute_difference": 0.0,
+      "relative_difference": 0.0
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "wine",
+      "metric": "iterations",
+      "from_scratch": 2.0,
+      "scikit_learn": 7.0,
+      "absolute_difference": 5.0,
+      "relative_difference": 0.7142857142857143
+    },
+    {
+      "algorithm": "KMeans",
+      "dataset": "wine",
+      "metric": "fit_seconds",
+      "from_scratch": 0.00926740001887083,
+      "scikit_learn": 0.008242699957918376,
+      "absolute_difference": 0.0010247000609524548,
+      "relative_difference": 0.1243160695141006
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "iris",
+      "metric": "explained_variance_ratio_sum",
+      "from_scratch": 0.9581320720000164,
+      "scikit_learn": 0.9581320720000164,
+      "absolute_difference": 0.0,
+      "relative_difference": 0.0
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "iris",
+      "metric": "reconstruction_mse",
+      "from_scratch": 0.041867927999983595,
+      "scikit_learn": 0.0418679279999836,
+      "absolute_difference": 6.938893903907228e-18,
+      "relative_difference": 1.6573291861756201e-16
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "iris",
+      "metric": "projector_frobenius_distance",
+      "from_scratch": 8.186718638421367e-16,
+      "scikit_learn": 0.0,
+      "absolute_difference": 8.186718638421367e-16,
+      "relative_difference": null
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "iris",
+      "metric": "fit_seconds",
+      "from_scratch": 0.00017389998538419604,
+      "scikit_learn": 0.0004873999860137701,
+      "absolute_difference": 0.00031350000062957406,
+      "relative_difference": 0.6432088831055424
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "wine",
+      "metric": "explained_variance_ratio_sum",
+      "from_scratch": 0.8016229275554789,
+      "scikit_learn": 0.8016229275554788,
+      "absolute_difference": 1.1102230246251565e-16,
+      "relative_difference": 1.3849691500350956e-16
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "wine",
+      "metric": "reconstruction_mse",
+      "from_scratch": 0.19837707244452132,
+      "scikit_learn": 0.19837707244452127,
+      "absolute_difference": 5.551115123125783e-17,
+      "relative_difference": 2.79826446409437e-16
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "wine",
+      "metric": "projector_frobenius_distance",
+      "from_scratch": 4.45036666984728e-15,
+      "scikit_learn": 0.0,
+      "absolute_difference": 4.45036666984728e-15,
+      "relative_difference": null
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "wine",
+      "metric": "fit_seconds",
+      "from_scratch": 0.00021129997912794352,
+      "scikit_learn": 0.0004705999745056033,
+      "absolute_difference": 0.0002592999953776598,
+      "relative_difference": 0.5509987450595843
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "digits",
+      "metric": "explained_variance_ratio_sum",
+      "from_scratch": 0.8943031165985265,
+      "scikit_learn": 0.8943031165985262,
+      "absolute_difference": 2.220446049250313e-16,
+      "relative_difference": 2.482878576668456e-16
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "digits",
+      "metric": "reconstruction_mse",
+      "from_scratch": 0.007751010620871966,
+      "scikit_learn": 0.007751010620871965,
+      "absolute_difference": 8.673617379884035e-19,
+      "relative_difference": 1.119030511521642e-16
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "digits",
+      "metric": "projector_frobenius_distance",
+      "from_scratch": 2.6971961140217645e-14,
+      "scikit_learn": 0.0,
+      "absolute_difference": 2.6971961140217645e-14,
+      "relative_difference": null
+    },
+    {
+      "algorithm": "PCA",
+      "dataset": "digits",
+      "metric": "fit_seconds",
+      "from_scratch": 0.005995299958158284,
+      "scikit_learn": 0.006802899995818734,
+      "absolute_difference": 0.0008076000376604497,
+      "relative_difference": 0.11871408342865908
+    }
+  ]
+}
