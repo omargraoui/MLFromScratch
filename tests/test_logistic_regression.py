@@ -1,5 +1,7 @@
 """Test stable probabilities, objective scaling, and binary classification behavior."""
 
+from decimal import Decimal, localcontext
+
 import numpy as np
 import pytest
 from sklearn.linear_model import LogisticRegression as SklearnLogisticRegression
@@ -119,6 +121,57 @@ def test_large_logits_remain_finite_during_training_and_prediction():
     assert np.all(np.isfinite(model.loss_history_))
     probabilities = model.predict_proba([[-1e6], [0.0], [1e6]])
     np.testing.assert_allclose(probabilities, [[1.0, 0.0], [0.5, 0.5], [0.0, 1.0]])
+
+
+@pytest.mark.parametrize("magnitude", [0, 1, 40, 100, 700, 1000])
+def test_logistic_gradient_matches_high_precision_at_extreme_logits(monkeypatch, magnitude):
+    original_minimize = GradientDescent.minimize
+
+    def checked_minimize(optimizer, objective, initial_params):
+        # Identity features isolate each sample's derivative, including both
+        # labels at both logit signs and confidently incorrect predictions.
+        params = np.array([-magnitude, -magnitude, magnitude, magnitude], dtype=float)
+        loss, gradient = objective(params)
+        with localcontext() as context:
+            context.prec = 80
+            tail = Decimal(1) / (1 + Decimal(magnitude).exp())
+            expected = np.array([float(value / 4) for value in (tail, tail - 1, 1 - tail, -tail)])
+        assert np.isfinite(loss)
+        # An absolute tolerance would silently accept zero for the small tails.
+        np.testing.assert_allclose(gradient, expected, rtol=1e-14, atol=0)
+        return original_minimize(optimizer, objective, initial_params)
+
+    monkeypatch.setattr(GradientDescent, "minimize", checked_minimize)
+    # No optimization is needed after the objective probe: the initial norm is 0.25.
+    LogisticRegression(fit_intercept=False, l2=0.0, tol=0.3).fit(np.eye(4), [0, 1, 0, 1])
+
+
+@pytest.mark.parametrize("fit_intercept", [False, True])
+@pytest.mark.parametrize("tol", [1e-20, 1e-16])
+def test_saturated_gradient_stopping_is_symmetric_under_label_inversion(fit_intercept, tol):
+    features = np.array([[1.0], [-2.0]])
+    targets = np.array([1, 0])
+    models = []
+    for labels in (targets, 1 - targets):
+        model = LogisticRegression(
+            learning_rate=160 / 3, max_iter=1, tol=tol, fit_intercept=fit_intercept
+        )
+        # The first update produces logits +/-40 and -/+80. The true gradient
+        # norm is between these tolerances, even when sigmoid(40) rounds to 1.
+        if tol == 1e-20:
+            with pytest.warns(ConvergenceWarning, match="max_iter"):
+                model.fit(features, labels)
+            assert not model.converged_
+        else:
+            model.fit(features, labels)
+            assert model.converged_
+        assert model.n_iter_ == 1
+        models.append(model)
+
+    np.testing.assert_array_equal(models[0].coef_, [40.0])
+    np.testing.assert_array_equal(models[1].coef_, -models[0].coef_)
+    assert models[1].intercept_ == -models[0].intercept_
+    np.testing.assert_array_equal(models[0].loss_history_, models[1].loss_history_)
 
 
 def test_iteration_limit_is_explicit(binary_data):

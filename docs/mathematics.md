@@ -124,7 +124,29 @@ $$
 $$
 
 This form also avoids subtracting two large, nearly equal values. The sigmoid computes
-only $e^{-|z|}$, avoiding exponential overflow. `predict_proba` returns columns
+only $e^{-|z|}$, avoiding exponential overflow. The gradient needs the same care:
+for $y=1$ and $z=40$, float64 evaluates $\sigma(z)-1$ as zero even though the
+derivative is approximately $-4.248\times10^{-18}$ and is representable.
+Differentiating the signed-logit loss directly gives
+
+$$
+s_i=1-2y_i,\qquad
+\frac{\partial\ell_i}{\partial z_i}=s_i\sigma(s_i z_i)
+=\begin{cases}
+\sigma(z_i), & y_i=0,\\
+-\sigma(-z_i), & y_i=1.
+\end{cases}
+$$
+
+The implementation uses this residual in both the weight and intercept gradients;
+the L2 term is unchanged. This avoids premature gradient-norm convergence caused by
+rounding positive-class probabilities to one. It also preserves the mathematical
+symmetry under swapping labels and negating parameters. Extremely small tails can
+still underflow to zero when they are outside float64's representable range.
+Tests compare individual derivatives to a high-precision decimal reference and
+check convergence under label inversion with both strict and loose tolerances.
+
+`predict_proba` returns columns
 $[1-p,p]$; `predict` returns 1 when $p\geq\texttt{threshold}$, including ties.
 Training requires both classes. The objective is convex, but unregularized strictly
 separable data have no finite maximum-likelihood solution: weights can grow while loss

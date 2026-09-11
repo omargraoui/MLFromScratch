@@ -10,9 +10,11 @@ outside the repository. The package author and MIT copyright holder are Omar Gra
 python -m pytest --cov=ml_from_scratch --cov-report=term-missing --cov-report=xml
 ```
 
-Result: **231 passed**, **98.41% branch-inclusive coverage**. The configured minimum is
+Result: **241 passed**, **98.41% branch-inclusive coverage**. The configured minimum is
 90%. The suite includes numerical gradients, independent reference comparisons, invalid
 inputs, overflow, reproducibility, failed refits and the runtime dependency boundary.
+Logistic gradient checks also use an independent high-precision decimal reference at
+logit magnitudes up to 1000 and verify convergence symmetry under label inversion.
 
 ## Benchmarks and figures
 

@@ -259,7 +259,7 @@ results and compares a reference. To explore interactively, install `.[notebooks
 
 ## Testing and developer commands
 
-Latest local acceptance: **231 tests passed, 98.41% branch-inclusive coverage**, with all five
+Latest local acceptance: **241 tests passed, 98.41% branch-inclusive coverage**, with all five
 notebooks and all five README examples executed successfully.
 
 All commands run from the repository root after installing `.[dev]`. Make is optional;

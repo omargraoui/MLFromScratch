@@ -63,15 +63,19 @@ class LogisticRegression:
         penalty_mask = np.ones(design.shape[1])
         if self.fit_intercept:
             penalty_mask[-1] = 0.0
+        label_sign = 1.0 - 2.0 * targets
 
         def objective(params: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
             logits = design @ params
             # Choosing the sign before logaddexp avoids cancellation when y=1
             # and logits are large, as in logaddexp(0, logits) - y * logits.
-            signed_logits = np.where(targets == 1.0, -logits, logits)
+            signed_logits = label_sign * logits
             penalized = params * penalty_mask
             loss = float(np.mean(np.logaddexp(0.0, signed_logits)))
-            gradient = design.T @ (sigmoid(logits) - targets) / design.shape[0]
+            # Differentiate the signed loss directly: sigmoid(z) - 1 loses
+            # representable negative tails when sigmoid(z) rounds to one.
+            residual = label_sign * sigmoid(signed_logits)
+            gradient = design.T @ residual / design.shape[0]
             if self.l2:
                 loss += 0.5 * self.l2 * float(penalized @ penalized)
                 gradient += self.l2 * penalized
