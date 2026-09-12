@@ -75,6 +75,35 @@ solution, not a matrix-inversion implementation.
 [NumPy's least-squares contract](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
 specifies the minimum-norm behavior.
 
+### Preserving small variations around large feature offsets
+
+With an intercept, translating features by $c$ preserves the fitted weights and
+predictions: $w'=w$ and $b'=b-c^Tw$. Floating-point evaluation needs extra care.
+For example, the float64 values $10^{16}$ and $10^{16}+2$ are distinct, but their
+exact mean $10^{16}+1$ is not representable. Subtracting a rounded mean can change
+the least-squares solution, even if another library gives the same result.
+
+The direct solver retains a two-part feature mean. With training reference $a=x_0$,
+compute $D=X-a$, $m=\operatorname{mean}(D)$, and solve using $X_c=D-m$. Predictions use
+
+$$
+\hat y(x)=((x-a)-m)^Tw+\bar y.
+$$
+
+Neither $a+m$ nor the cancellation between a large $x^Tw$ and intercept is needed
+for prediction. The public intercept is still computed as
+$b=(\bar y-m^Tw)-a^Tw$, but manually evaluating `X @ coef_ + intercept_` can lose
+precision compared with `predict`. Training loss uses the same centered evaluation
+as prediction. GD and fits without an intercept retain their original evaluation.
+
+Analytic tests use known slopes and predictions, noisy repeated observations, and
+a rank-deficient design with known minimum-norm weights. Absolute tolerances are
+set at the scale of the small target variations, not the large feature offset.
+This preserves information present in the input; it cannot recover differences
+already rounded away. It also does not guarantee accuracy for every float64 input:
+extreme feature ranges can overflow during translation, and target centering still
+uses a float64 mean.
+
 MSE averages squared errors; RMSE returns to target units; MAE averages absolute
 errors. The coefficient of determination is
 

@@ -26,6 +26,10 @@ class LinearRegression:
     The direct solver exposes a one-element ``loss_history_``, ``n_iter_=0``,
     and ``converged_=True``. The gradient solver records its initial loss and
     all accepted steps. Only single-output regression is supported.
+    With a direct fit and intercept, two-part feature centering is retained
+    for prediction. This avoids rounding a large training mean or cancelling
+    large terms in ``X @ coef_ + intercept_``; the latter expression can lose
+    precision even though it describes the same affine map mathematically.
     """
 
     def __init__(
@@ -51,17 +55,29 @@ class LinearRegression:
         features, targets = check_X_y(X, y)
         if self.solver not in ("normal", "gd"):
             raise ValueError("solver must be 'normal' or 'gd'.")
+        centering: tuple[NDArray[np.float64], NDArray[np.float64], float] | None = None
         if self.solver == "normal":
-            feature_mean = (
-                features.mean(axis=0) if self.fit_intercept else np.zeros(features.shape[1])
-            )
-            target_mean = float(targets.mean()) if self.fit_intercept else 0.0
-            coefficients, _, _, _ = np.linalg.lstsq(
-                features - feature_mean, targets - target_mean, rcond=None
-            )
-            intercept = float(target_mean - feature_mean @ coefficients)
             with np.errstate(over="raise", invalid="raise"):
-                residual = features @ coefficients + intercept - targets
+                if self.fit_intercept:
+                    # Keep the mean as offset + mean_offset: their sum may round
+                    # away variation that is still present in the input samples.
+                    offset = features[0].copy()
+                    translated = features - offset
+                    mean_offset = translated.mean(axis=0)
+                    design = translated - mean_offset
+                    target_mean = float(targets.mean())
+                    centering = offset, mean_offset, target_mean
+                else:
+                    design = features
+                    target_mean = 0.0
+                coefficients, _, _, _ = np.linalg.lstsq(design, targets - target_mean, rcond=None)
+                intercept = (
+                    float((target_mean - mean_offset @ coefficients) - offset @ coefficients)
+                    if self.fit_intercept
+                    else 0.0
+                )
+                # Evaluate the same centered prediction used by predict().
+                residual = design @ coefficients + target_mean - targets
                 loss = float(np.mean(residual**2))
             if not np.isfinite(loss):
                 raise FloatingPointError("Least-squares solution produced a non-finite loss.")
@@ -93,6 +109,8 @@ class LinearRegression:
         self.coef_ = coefficients.copy()
         self.intercept_ = intercept
         self.n_features_in_ = features.shape[1]
+        # Publish only after a successful fit, and reset on GD/no-intercept refits.
+        self._centering_ = centering
         return self
 
     def predict(self, X: ArrayLike) -> NDArray[np.float64]:
@@ -101,6 +119,12 @@ class LinearRegression:
         features = check_array(X)
         check_n_features(features, self.n_features_in_)
         with np.errstate(over="raise", invalid="raise"):
+            if self._centering_ is not None:
+                offset, mean_offset, target_mean = self._centering_
+                return np.asarray(
+                    ((features - offset) - mean_offset) @ self.coef_ + target_mean,
+                    dtype=np.float64,
+                )
             return np.asarray(features @ self.coef_ + self.intercept_, dtype=np.float64)
 
     def score(self, X: ArrayLike, y: ArrayLike) -> float:

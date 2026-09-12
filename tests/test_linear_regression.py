@@ -63,6 +63,95 @@ def test_centered_solver_is_stable_with_large_feature_offset():
     np.testing.assert_allclose(model.coef_, [2.5], atol=1e-12)
 
 
+@pytest.mark.parametrize("offset", [0.0, -1e16, 1e16])
+@pytest.mark.parametrize("bias", [0.0, 1.0])
+def test_direct_solver_preserves_known_line_under_translation(offset, bias):
+    # The samples remain distinct in float64, but offset + 1 is not representable.
+    features = np.array([[0.0], [2.0], [0.0], [2.0]]) + offset
+    targets = np.array([0.0, 2.0, 0.0, 2.0]) + bias
+    model = LinearRegression().fit(features, targets)
+    np.testing.assert_allclose(model.coef_, [1.0], rtol=0, atol=1e-14)
+    np.testing.assert_allclose(model.predict(features), targets, rtol=0, atol=1e-14)
+    # New observations must use the training center, including one-sample batches.
+    for value in (-2.0, 4.0):
+        np.testing.assert_allclose(
+            model.predict([[offset + value]]), [value + bias], rtol=0, atol=1e-14
+        )
+    assert model.loss_history_[0] < 1e-26
+
+
+def test_translated_noisy_fit_reports_prediction_mse():
+    features = np.array([[0.0], [2.0], [0.0], [2.0]]) + 1e16
+    targets = np.array([0.0, 2.0, 2.0, 4.0])
+    # Each feature value occurs twice; its conditional sample mean is the fitted value.
+    model = LinearRegression().fit(features, targets)
+    np.testing.assert_allclose(model.coef_, [1.0], rtol=0, atol=1e-14)
+    np.testing.assert_allclose(model.predict(features), [1.0, 3.0, 1.0, 3.0], rtol=0, atol=1e-14)
+    assert model.loss_history_ == pytest.approx([1.0], abs=1e-14)
+    assert model.loss_history_[0] == pytest.approx(
+        np.mean((model.predict(features) - targets) ** 2)
+    )
+
+
+def test_translated_rank_deficient_fit_retains_minimum_norm_weights():
+    values = np.array([0.0, 2.0, 0.0, 2.0])
+    features = np.column_stack((values, 2 * values)) + [1e16, -1e16]
+    targets = 3 * values + 1
+    model = LinearRegression().fit(features, targets)
+    # All minimizers satisfy w1 + 2*w2 = 3; its minimum-norm solution is (0.6, 1.2).
+    np.testing.assert_allclose(model.coef_, [0.6, 1.2], rtol=0, atol=1e-14)
+    np.testing.assert_allclose(model.predict(features), targets, rtol=0, atol=1e-13)
+    np.testing.assert_allclose(model.predict([[1e16 + 4, -1e16 + 8]]), [13.0], rtol=0, atol=1e-13)
+
+
+@pytest.mark.parametrize(
+    ("solver", "fit_intercept"), [("normal", False), ("gd", False), ("gd", True)]
+)
+def test_refit_replaces_centering_when_solver_or_intercept_changes(solver, fit_intercept):
+    model = LinearRegression().fit([[1e16], [1e16 + 2]], [1.0, 3.0])
+    features = np.array([[-1.0, 0.0], [1.0, 0.0], [0.0, -1.0], [0.0, 1.0]])
+    targets = features @ [2.0, -3.0] + (4.0 if fit_intercept else 0.0)
+    model.solver, model.fit_intercept, model.tol = solver, fit_intercept, 1e-10
+    model.fit(features, targets)
+    np.testing.assert_allclose(model.predict(features), targets, rtol=0, atol=1e-9)
+    # Returning to the direct centered solver must establish a fresh training center.
+    model.solver, model.fit_intercept = "normal", True
+    model.fit([[-1e16], [-1e16 + 2]], [3.0, 5.0])
+    np.testing.assert_allclose(model.predict([[-1e16 + 4]]), [7.0], rtol=0, atol=1e-13)
+
+
+def test_centering_does_not_alias_or_mutate_training_inputs():
+    features = np.array([[1e16], [1e16 + 2]])
+    targets = np.array([1.0, 3.0])
+    original_features, original_targets = features.copy(), targets.copy()
+    model = LinearRegression().fit(features, targets)
+    np.testing.assert_array_equal(features, original_features)
+    np.testing.assert_array_equal(targets, original_targets)
+    features[:] = 0.0
+    targets[:] = 0.0
+    np.testing.assert_allclose(
+        model.predict(original_features), original_targets, rtol=0, atol=1e-14
+    )
+
+
+def test_numerical_refit_failure_preserves_centered_predictions(monkeypatch):
+    features = np.array([[1e16], [1e16 + 2]])
+    model = LinearRegression().fit(features, [1.0, 3.0])
+    before = model.predict(features)
+    coefficients, intercept, history = model.coef_.copy(), model.intercept_, model.loss_history_[:]
+
+    def failed_solve(*args, **kwargs):
+        raise np.linalg.LinAlgError("Injected least-squares failure")
+
+    monkeypatch.setattr(np.linalg, "lstsq", failed_solve)
+    with pytest.raises(np.linalg.LinAlgError, match="Injected"):
+        model.fit([[-1e16], [-1e16 + 2]], [3.0, 5.0])
+    np.testing.assert_array_equal(model.predict(features), before)
+    np.testing.assert_array_equal(model.coef_, coefficients)
+    assert model.intercept_ == intercept
+    assert model.loss_history_ == history
+
+
 def test_one_sample_with_intercept_predicts_its_target():
     model = LinearRegression().fit([[8.0, 4.0]], [3.0])
     np.testing.assert_array_equal(model.coef_, [0.0, 0.0])
