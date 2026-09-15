@@ -114,6 +114,40 @@ $$
 $R^2$ can be negative. It needs at least two samples here. Constant targets receive
 1 for perfect predictions and 0 otherwise, an explicit finite convention.
 
+### Stable evaluation of R-squared
+
+Changing target units must not change $R^2$: a common nonzero scale multiplies
+both sums of squares by the same factor. Directly squaring float64 values can
+nevertheless underflow or overflow. For example, targets `[0, 2e-200]` and
+predictions `[0, 0]` have $R^2=-1$, but both naive sums round to zero.
+
+The [metric](../src/ml_from_scratch/metrics/regression.py) scales both vectors
+by the same power of two before subtraction and squaring. `frexp` selects the
+exponent and `ldexp` applies it without constructing an overflowing scale factor.
+Power-of-two scaling preserves binary significands except when values underflow.
+For scaled targets $u$ and predictions $v$, it computes
+
+$$
+d_i=u_i-u_0,\qquad
+R^2=1-\frac{\sum_i(u_i-v_i)^2}{\sum_i(d_i-\bar d)^2}.
+$$
+
+The translated mean avoids rounding away small variations around a large offset.
+In particular, `[1e16, 1e16+2]` with predictions `[1e16, 1e16]` also has $R^2=-1$;
+subtracting the rounded target mean incorrectly gives zero instead.
+Constant targets are detected by equality before arithmetic, so neither a rounded
+mean nor underflowed residuals can trigger an incorrect constant-target result.
+This correction also applies to `LinearRegression.score`.
+
+[Dedicated tests](../tests/test_r2_score.py) compare against exact rational
+arithmetic on the supplied float64 values, test the smallest subnormal and largest
+finite magnitudes, and compare ordinary inputs with scikit-learn. The constant-target
+convention follows the [reference API](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html);
+reference-library floating-point results are not an oracle for extreme inputs.
+Differences already lost when constructing input arrays cannot be recovered.
+A score outside the float64 range raises `FloatingPointError` instead of returning
+an invalid or falsely perfect score. MSE, RMSE, MAE and estimator training are unchanged.
+
 ## Binary logistic regression: probabilities and cross entropy
 
 For labels $y_i\in\{0,1\}$, define logits and probabilities

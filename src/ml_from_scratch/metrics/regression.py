@@ -38,12 +38,31 @@ def r2_score(y_true: ArrayLike, y_pred: ArrayLike) -> float:
 
     Requires at least two samples. For constant targets, return 1 for perfect
     predictions and 0 otherwise (the finite convention used by scikit-learn).
+    Power-of-two scaling avoids overflow/underflow from squaring the original
+    units; translated centering preserves variation around large offsets.
+    A score outside the float64 range raises ``FloatingPointError``.
     """
     truth, prediction = _paired_vectors(y_true, y_pred)
     if truth.size < 2:
         raise ValueError("R squared requires at least two samples.")
-    residual = float(np.sum((truth - prediction) ** 2))
-    total = float(np.sum((truth - truth.mean()) ** 2))
-    if total == 0:
-        return 1.0 if residual == 0 else 0.0
-    return 1.0 - residual / total
+    # Determine degeneracy from the data, not rounded means or squared errors.
+    if np.all(truth == truth[0]):
+        return float(np.array_equal(truth, prediction))
+
+    largest = max(float(np.max(np.abs(truth))), float(np.max(np.abs(prediction))))
+    _, exponent = np.frexp(largest)
+    try:
+        with np.errstate(over="raise", invalid="raise", divide="raise", under="ignore"):
+            # ldexp also handles subnormal inputs and a largest value near
+            # float64.max, without constructing 2**exponent or its reciprocal.
+            scaled_truth = np.ldexp(truth, -int(exponent))
+            scaled_prediction = np.ldexp(prediction, -int(exponent))
+            translated = scaled_truth - scaled_truth[0]
+            centered = translated - np.mean(translated)
+            residual = np.sum((scaled_truth - scaled_prediction) ** 2)
+            total = np.sum(centered**2)
+            # A vanishing denominator here is numerical, not a constant target.
+            score = float(1.0 - residual / total)
+    except FloatingPointError as error:
+        raise FloatingPointError("R squared is outside the float64 range.") from error
+    return score
