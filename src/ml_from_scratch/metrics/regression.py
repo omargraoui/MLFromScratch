@@ -23,8 +23,33 @@ def mean_squared_error(y_true: ArrayLike, y_pred: ArrayLike) -> float:
 
 
 def root_mean_squared_error(y_true: ArrayLike, y_pred: ArrayLike) -> float:
-    """Return the square root of MSE, in target units."""
-    return float(np.sqrt(mean_squared_error(y_true, y_pred)))
+    """Return the root mean squared residual, in target units.
+
+    Scale residuals by a power of two before squaring, since MSE can overflow
+    or underflow even when RMSE is representable. A result exceeding the
+    float64 range raises ``FloatingPointError``.
+    """
+    truth, prediction = _paired_vectors(y_true, y_pred)
+    try:
+        with np.errstate(over="raise", invalid="raise", divide="raise", under="ignore"):
+            correction = 0
+            try:
+                # Subtract first: large matching values must not erase tiny
+                # residuals elsewhere by determining the normalization scale.
+                residual = truth - prediction
+            except FloatingPointError:
+                # Opposite finite extremes can have an unrepresentable
+                # difference, yet their RMS over enough samples can be finite.
+                residual = truth * 0.5 - prediction * 0.5
+                correction = 1
+            _, exponent = np.frexp(np.max(np.abs(residual)))
+            scaled = np.ldexp(residual, -int(exponent))
+            # Squared scaled values are < 1. Only negligible contributions or
+            # the final subnormal rounding may underflow; neither is an error.
+            result = np.ldexp(np.sqrt(np.mean(scaled**2)), int(exponent) + correction)
+    except FloatingPointError as error:
+        raise FloatingPointError("RMSE is outside the float64 range.") from error
+    return float(result)
 
 
 def mean_absolute_error(y_true: ArrayLike, y_pred: ArrayLike) -> float:

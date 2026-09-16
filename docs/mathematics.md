@@ -114,6 +114,44 @@ $$
 $R^2$ can be negative. It needs at least two samples here. Constant targets receive
 1 for perfect predictions and 0 otherwise, an explicit finite convention.
 
+### Stable evaluation of RMSE
+
+Computing `sqrt(mean(residual**2))` can overflow or underflow even when the
+answer is representable: a single residual of `1e200` has RMSE `1e200`, and
+one of `1e-200` has RMSE `1e-200`. Their float64 squares give infinity and
+zero, respectively. Even finite squares can overflow during their sum.
+
+The [RMSE metric](../src/ml_from_scratch/metrics/regression.py) subtracts the
+inputs first, then uses `frexp` and `ldexp` to scale the largest absolute residual
+into $[1/2,1)$. For residuals $r_i$ and the selected exponent $e$, it evaluates
+
+$$
+\operatorname{RMSE}=2^e\sqrt{\frac{1}{n}\sum_i(2^{-e}r_i)^2}.
+$$
+
+Power-of-two scaling preserves binary significands except at underflow, and the
+normalized squares are bounded by one. Scaling the residuals, rather than the
+original targets, also preserves tiny errors beside large perfectly matched values.
+If subtraction itself overflows, the metric subtracts half-sized inputs instead
+and adds one to the final exponent. For example, one residual of twice
+`float64.max` among four samples has a representable RMSE of `float64.max`.
+`ldexp` restores the units without constructing an overflowing scale factor.
+
+[Dedicated tests](../tests/test_rmse.py) form the mean squared error with exact
+rational arithmetic on the supplied float64 values, then take its square root
+exactly when rational, or with 100-digit decimal precision otherwise. They cover
+subnormals (including rounding ties), opposite finite extremes,
+offsets, non-mutation, input validation and evaluation of linear-regression predictions.
+Ordinary results agree with NumPy and scikit-learn within floating-point tolerance;
+those libraries' direct square-and-root results are not an oracle at extreme scales.
+
+A final overflow raises `FloatingPointError`, consistent with the explicit range
+errors used elsewhere in the project. Negligible normalized terms may underflow,
+and a final result below the subnormal range may round to zero. This is a float64
+calculation, not a guarantee of correctly rounded results for every input; it cannot
+recover differences already lost when constructing the inputs. The standalone MSE
+and estimator training losses still use direct squaring and retain their range limits.
+
 ### Stable evaluation of R-squared
 
 Changing target units must not change $R^2$: a common nonzero scale multiplies
@@ -146,7 +184,8 @@ convention follows the [reference API](https://scikit-learn.org/stable/modules/g
 reference-library floating-point results are not an oracle for extreme inputs.
 Differences already lost when constructing input arrays cannot be recovered.
 A score outside the float64 range raises `FloatingPointError` instead of returning
-an invalid or falsely perfect score. MSE, RMSE, MAE and estimator training are unchanged.
+an invalid or falsely perfect score. MSE, MAE and estimator training are unchanged
+by these metric corrections.
 
 ## Binary logistic regression: probabilities and cross entropy
 
