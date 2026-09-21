@@ -24,7 +24,9 @@ class GradientDescent:
     each accepted update; ``n_iter_`` counts updates, not objective evaluations.
 
     A materially increasing loss or non-finite arithmetic raises
-    ``FloatingPointError``. This deliberately simple optimizer does not perform
+    ``FloatingPointError``. The allowed rounding error scales with the compared
+    losses, without an absolute floor that could hide divergence near zero.
+    This deliberately simple optimizer does not perform
     line search: use a smaller learning rate or rescale features in that case.
     Reaching ``max_iter`` emits ``ConvergenceWarning`` and retains the result.
     """
@@ -104,8 +106,12 @@ class GradientDescent:
                     "Gradient descent produced non-finite parameters; lower learning_rate."
                 )
             candidate_loss, candidate_gradient = self._evaluate(objective, candidate)
-            rounding_slack = 64.0 * np.finfo(np.float64).eps * max(1.0, abs(loss))
-            if candidate_loss > loss + rounding_slack:
+            # A unit-sized floor would admit large relative increases in small
+            # objectives. Compare the increase directly to avoid rounding the
+            # tolerance away when adding it to the previous loss.
+            loss_scale = max(abs(loss), abs(candidate_loss))
+            rounding_slack = 64.0 * np.finfo(np.float64).eps * loss_scale
+            if candidate_loss - loss > rounding_slack:
                 raise FloatingPointError(
                     "Gradient descent increased the objective; lower learning_rate "
                     "or scale features."

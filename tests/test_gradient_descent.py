@@ -145,3 +145,54 @@ def test_diverging_step_is_rejected_without_recording_it():
     assert optimizer.n_iter_ == 0
     assert optimizer.loss_history_ == [13.0]
     np.testing.assert_array_equal(optimizer.params_, [0.0, 0.0])
+
+
+@pytest.mark.parametrize("initial", [1.0, 1e-9, 1e-100, 1e-160])
+@pytest.mark.parametrize("offset_factor", [0.0, -2.0])
+def test_diverging_quadratic_is_rejected_at_small_loss_scales(initial, offset_factor):
+    # J(theta) = theta**2 + c has curvature 2 regardless of scale or offset.
+    # alpha=2 maps theta to -3*theta, increasing its squared error ninefold.
+    offset = offset_factor * initial**2
+
+    def objective(params):
+        return float(params @ params) + offset, 2.0 * params
+
+    parameters = np.array([initial])
+    initial_loss = objective(parameters)[0]
+    optimizer = GradientDescent(learning_rate=2.0, max_iter=1, tol=0.0)
+    with pytest.raises(FloatingPointError, match="increased the objective"):
+        optimizer.minimize(objective, parameters)
+    assert optimizer.n_iter_ == 0
+    assert not optimizer.converged_
+    assert optimizer.loss_history_ == [initial_loss]
+    np.testing.assert_array_equal(optimizer.params_, parameters)
+    np.testing.assert_array_equal(parameters, [initial])
+
+
+@pytest.mark.parametrize("initial", [1e-100, 1.0, 1e100])
+def test_stable_quadratic_step_reaches_analytic_minimum_across_scales(initial):
+    optimizer = GradientDescent(learning_rate=0.5, max_iter=1, tol=0.0)
+    optimizer.minimize(lambda p: (float(p @ p), 2.0 * p), [initial])
+    np.testing.assert_array_equal(optimizer.params_, [0.0])
+    assert optimizer.loss_history_ == [initial**2, 0.0]
+    assert optimizer.n_iter_ == 1
+    assert optimizer.converged_
+
+
+@pytest.mark.parametrize("initial", [1e-100, 1.0, 1e100])
+def test_roundoff_sized_increase_is_allowed_across_loss_scales(initial):
+    def objective(params):
+        loss = float(params @ params)
+        # alpha=1 changes only the sign: the exact quadratic loss is unchanged.
+        # Simulate one ULP of objective-evaluation error at the candidate.
+        if params[0] < 0:
+            loss = float(np.nextafter(loss, np.inf))
+        return loss, 2.0 * params
+
+    optimizer = GradientDescent(learning_rate=1.0, max_iter=1, tol=0.0)
+    with pytest.warns(ConvergenceWarning, match="max_iter"):
+        optimizer.minimize(objective, [initial])
+    np.testing.assert_array_equal(optimizer.params_, [-initial])
+    assert optimizer.loss_history_[1] > optimizer.loss_history_[0]
+    assert optimizer.n_iter_ == 1
+    assert not optimizer.converged_

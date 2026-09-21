@@ -42,6 +42,33 @@ is `n_iter_ + 1`. Exhausting `max_iter` emits `ConvergenceWarning` and leaves
 increases are tolerated. The quadratic notebook checks convergence against an analytical optimum
 and least-squares reference instead of treating a library estimator as a generic optimizer.
 
+### Detecting divergence at small loss scales
+
+The rounding allowance is relative to the two finite losses being compared:
+
+$$
+\delta = 64\,\epsilon_{64}\max(|J_t|, |J_{t+1}|).
+$$
+
+A candidate is rejected when $J_{t+1}-J_t>\delta$, before publishing its parameters
+or appending its loss. There is no unit-sized absolute floor: such a floor would
+allow a loss of $10^{-18}$ to increase to $9\times10^{-18}$. For the analytic
+quadratic $J(\theta)=\theta^2$, the update is
+$\theta_{t+1}=(1-2\alpha)\theta_t$. At $\alpha=2$, squared error grows ninefold
+regardless of the initial parameter scale; at $\alpha=1/2$, one update reaches zero.
+This same failure occurs in linear regression with small targets and an excessive
+learning rate, so the shared optimizer must reject it there too.
+
+Tests cover positive and negative initial losses, subnormal loss magnitudes,
+the analytic minimum, tolerated one-ULP evaluation noise at normal loss magnitudes,
+and a small-target regression checked against scikit-learn. Rejected steps retain
+the last accepted optimizer state; a failed regression refit retains its fitted model.
+This check is a numerical safeguard, not a line search or convergence proof.
+The allowance can underflow to zero for subnormal losses; increases are then rejected
+strictly. Large additive constants can still mask small changes in an objective,
+and a callback must evaluate its loss and gradient accurately. The gradient-norm
+stopping tolerance remains absolute and must be chosen for the objective's scale.
+
 ## Linear regression: least squares and its gradient
 
 The hypothesis is an affine map:

@@ -258,3 +258,26 @@ def test_prediction_overflow_is_explicit_and_failed_refit_retains_model():
     with pytest.raises(ValueError):
         model.fit([[np.nan]], [0.0])
     np.testing.assert_allclose(model.predict([[1.0]]), [2.0])
+
+
+def test_gd_rejects_divergence_with_small_targets_and_preserves_fitted_state():
+    features = np.array([[-1.0], [1.0]])
+    targets = np.array([-1e-9, 1e-9])
+    model = LinearRegression(
+        solver="gd", fit_intercept=False, learning_rate=0.5, max_iter=1, tol=0.0
+    ).fit(features, targets)
+    reference = SklearnLinearRegression(fit_intercept=False).fit(features, targets)
+    np.testing.assert_allclose(model.coef_, reference.coef_, rtol=1e-14, atol=0.0)
+    predictions = model.predict(features)
+    history = model.loss_history_.copy()
+
+    # The same MSE problem with alpha=2 would multiply the initial loss by nine.
+    model.learning_rate = 2.0
+    with pytest.raises(FloatingPointError, match="increased the objective"):
+        model.fit(features, targets)
+    np.testing.assert_array_equal(model.predict(features), predictions)
+    assert model.loss_history_ == history
+    assert model.n_iter_ == 1
+    assert model.converged_
+    np.testing.assert_array_equal(features, [[-1.0], [1.0]])
+    np.testing.assert_array_equal(targets, [-1e-9, 1e-9])
